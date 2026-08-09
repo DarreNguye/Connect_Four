@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connect-4 test board</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --p1: #2f6fb3;
+        --p1-dark: #1b4570;
+        --p1-soft: #cfe0f1;
+        --p2: #c4522a;
+        --p2-ink: #7a3116;
+        --p2-soft: #f2d8cc;
+        --ink: #15181c;
+        --muted: #666e78;
+        --faint: #9aa2ac;
+        --panel: #ffffff;
+        --page: #f4f5f7;
+        --well: #edeff2;
+        --rule: #dde1e6;
+        --rule-strong: #c3c9d0;
+        --ok: #1f7a4d;
+        --bad: #b3341f;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font:
+          400 15px/1.55 "IBM Plex Sans",
+          system-ui,
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 36px 24px 56px;
+      }
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0 0 4px;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 14px;
+        margin: 0 0 24px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        border-radius: 10px;
+        padding: 18px 20px;
+      }
+
+      button {
+        font:
+          500 13px/1 "IBM Plex Sans",
+          sans-serif;
+        color: var(--ink);
+        background: var(--panel);
+        border: 1px solid var(--rule-strong);
+        border-radius: 6px;
+        padding: 9px 14px;
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) {
+        background: var(--well);
+      }
+      button:disabled {
+        color: var(--faint);
+        cursor: default;
+        border-color: var(--rule);
+      }
+      button.solid {
+        background: var(--ink);
+        color: #fff;
+        border-color: var(--ink);
+      }
+      button.solid:hover:not(:disabled) {
+        background: #2b2f35;
+      }
+      select {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 13px;
+        padding: 8px 10px;
+        border: 1px solid var(--rule-strong);
+        border-radius: 6px;
+        background: var(--panel);
+        color: var(--ink);
+      }
+      :focus-visible {
+        outline: 2px solid var(--p1);
+        outline-offset: 2px;
+      }
+
+      .board {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        background: var(--well);
+        padding: 12px;
+        border-radius: 10px;
+      }
+      .col {
+        display: grid;
+        grid-template-rows: repeat(6, 1fr);
+        gap: 8px;
+        cursor: pointer;
+        border-radius: 8px;
+      }
+      .col.dead {
+        cursor: not-allowed;
+      }
+      .cell {
+        aspect-ratio: 1;
+        border-radius: 50%;
+        border: 1px solid var(--rule-strong);
+        background: var(--panel);
+        pointer-events: none;
+      }
+      .cell.p1 {
+        background: var(--p1-soft);
+        border-color: var(--p1);
+      }
+      .cell.p2 {
+        background: var(--p2-soft);
+        border-color: var(--p2);
+      }
+
+      /* ghost preview: .drop is tagged in render() as the lowest empty cell, so it
+   tracks gravity instead of relying on a positional selector */
+      .col:not(.dead):hover .cell.drop {
+        background: var(--p1-soft);
+        border-color: var(--p1);
+        opacity: 0.45;
+      }
+      .col.turn2:not(.dead):hover .cell.drop {
+        background: var(--p2-soft);
+        border-color: var(--p2);
+        opacity: 0.45;
+      }
+
+      .cell.win {
+        border-width: 3px;
+      }
+      .cell.p1.win {
+        border-color: var(--p1-dark);
+      }
+      .cell.p2.win {
+        border-color: var(--p2-ink);
+      }
+      .cell.last {
+        border-width: 2px;
+      }
+      .axis {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        padding: 8px 12px 0;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+        color: var(--faint);
+        text-align: center;
+      }
+
+      .bar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
+      .status {
+        font-size: 15px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 1px solid;
+        flex: none;
+      }
+      .dot.a {
+        background: var(--p1-soft);
+        border-color: var(--p1);
+      }
+      .dot.b {
+        background: var(--p2-soft);
+        border-color: var(--p2);
+      }
+      .err {
+        color: var(--bad);
+        font-size: 13px;
+        font-family: "IBM Plex Mono", monospace;
+        margin-top: 10px;
+        min-height: 18px;
+        line-height: 1.5;
+      }
+      .moves {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 10px;
+        word-break: break-all;
+        min-height: 19px;
+      }
+      label.inline {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--muted);
+        cursor: pointer;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Connect-4 test board</h1>
+      <p class="sub">
+        All rules run in the Python engine. The browser only renders and clicks.
+      </p>
+
+      <div class="panel">
+        <div class="board" id="board"></div>
+        <div class="axis" id="axis"></div>
+
+        <div class="bar">
+          <div class="status" id="status"></div>
+        </div>
+
+        <div class="bar">
+          <button class="solid" id="new">New game</button>
+          <button id="undo">Undo</button>
+          <button id="play">Bot move</button>
+          <select id="botsel" aria-label="Bot"></select>
+          <label class="inline"
+            ><input type="checkbox" id="auto" /> bot replies
+            automatically</label
+          >
+        </div>
+
+        <div class="err" id="err"></div>
+        <div class="moves" id="moves"></div>
+      </div>
+    </div>
+
+    <script>
+      "use strict";
+      (function () {
+        var $ = function (id) {
+          return document.getElementById(id);
+        };
+        var S = null,
+          busy = false;
+
+        // A non-JSON response almost always means the page wasn't served by app.py,
+        // so say that outright rather than letting JSON.parse throw on "<!DOCTYPE".
+        function readJson(r, path) {
+          var ct = r.headers.get("content-type") || "";
+          if (ct.indexOf("application/json") < 0) {
+            throw new Error(
+              "Expected JSON from " +
+                path +
+                ", got " +
+                (ct || "no content-type") +
+                " (HTTP " +
+                r.status +
+                "). Open http://127.0.0.1:5000 rather than the file itself.",
+            );
+          }
+          return r.json().then(function (j) {
+            if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+            return j;
+          });
+        }
+
+        function post(path, body) {
+          return fetch(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body || {}),
+          }).then(function (r) {
+            return readJson(r, path);
+          });
+        }
+
+        function name(p) {
+          return p === 1 ? "+1" : "\u22121";
+        }
+
+        function render() {
+          var winSet = {};
+          (S.winning_line || []).forEach(function (rc) {
+            winSet[rc[0] + "," + rc[1]] = 1;
+          });
+
+          var over = S.winner !== null;
+
+          var lastCell = null;
+          if (S.last_move !== null && S.last_move !== undefined) {
+            for (var r = 0; r < 6; r++) {
+              if (S.grid[r][S.last_move] !== 0) {
+                lastCell = r + "," + S.last_move;
+                break;
+              }
+            }
+          }
+
+          var h = "";
+          for (var c = 0; c < 7; c++) {
+            var playable = !over && S.legal.indexOf(c) >= 0;
+
+            // scan upward from the floor: the first empty cell is where a disc lands
+            var target = -1;
+            for (var t = 5; t >= 0; t--) {
+              if (S.grid[t][c] === 0) {
+                target = t;
+                break;
+              }
+            }
+
+            h +=
+              '<div class="col' +
+              (playable ? "" : " dead") +
+              (S.side === -1 ? " turn2" : "") +
+              '" data-col="' +
+              c +
+              '">';
+            for (var r2 = 0; r2 < 6; r2++) {
+              var v = S.grid[r2][c],
+                k = r2 + "," + c;
+              h +=
+                '<div class="cell ' +
+                (v === 1 ? "p1" : v === -1 ? "p2" : "empty") +
+                (playable && r2 === target ? " drop" : "") +
+                (winSet[k] ? " win" : "") +
+                (k === lastCell ? " last" : "") +
+                '"></div>';
+            }
+            h += "</div>";
+          }
+          $("board").innerHTML = h;
+          $("axis").innerHTML = "0123456"
+            .split("")
+            .map(function (d) {
+              return "<span>" + d + "</span>";
+            })
+            .join("");
+
+          var st;
+          if (S.winner === 1 || S.winner === -1) {
+            st =
+              '<span class="dot ' +
+              (S.winner === 1 ? "a" : "b") +
+              '"></span>' +
+              name(S.winner) +
+              " wins in " +
+              S.history.length +
+              " moves";
+          } else if (S.winner === 0) {
+            st = "Draw \u2014 board full at 42";
+          } else {
+            st =
+              '<span class="dot ' +
+              (S.side === 1 ? "a" : "b") +
+              '"></span>' +
+              name(S.side) +
+              " to move";
+          }
+          $("status").innerHTML = st;
+
+          $("undo").disabled = S.history.length === 0;
+          $("play").disabled = over;
+          $("moves").textContent = S.history.length
+            ? "moves: " + S.history.join(" ")
+            : "";
+
+          if (!$("botsel").options.length) {
+            $("botsel").innerHTML = S.bots
+              .map(function (b) {
+                return (
+                  '<option value="' +
+                  b +
+                  '"' +
+                  (b === "tactical" ? " selected" : "") +
+                  ">" +
+                  b +
+                  "</option>"
+                );
+              })
+              .join("");
+          }
+        }
+
+        function apply(j) {
+          S = j;
+          $("err").textContent = "";
+          render();
+        }
+        function fail(e) {
+          $("err").textContent = e.message;
+        }
+
+        function botTurn() {
+          return post("/api/bot", { bot: $("botsel").value }).then(apply);
+        }
+
+        function click(col) {
+          if (busy || !S || S.winner !== null || S.legal.indexOf(col) < 0)
+            return;
+          busy = true;
+          post("/api/move", { col: col })
+            .then(function (j) {
+              apply(j);
+              if ($("auto").checked && j.winner === null) return botTurn();
+            })
+            .catch(fail)
+            .finally(function () {
+              busy = false;
+            });
+        }
+
+        $("board").onclick = function (e) {
+          var col = e.target.closest(".col");
+          if (col) click(parseInt(col.dataset.col, 10));
+        };
+        $("new").onclick = function () {
+          post("/api/new").then(apply).catch(fail);
+        };
+        $("undo").onclick = function () {
+          post("/api/undo").then(apply).catch(fail);
+        };
+        $("play").onclick = function () {
+          if (busy) return;
+          busy = true;
+          botTurn()
+            .catch(fail)
+            .finally(function () {
+              busy = false;
+            });
+        };
+        document.addEventListener("keydown", function (e) {
+          if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT")
+            return;
+          if (e.key >= "0" && e.key <= "6") click(parseInt(e.key, 10));
+          if (e.key === "u") $("undo").click();
+          if (e.key === "n") $("new").click();
+        });
+
+        fetch("/api/state")
+          .then(function (r) {
+            return readJson(r, "/api/state");
+          })
+          .then(apply)
+          .catch(fail);
+      })();
+    </script>
+  </body>
+</html>

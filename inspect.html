@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect-4 dataset inspector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --p1:#2F6FB3; --p1-dark:#1B4570; --p1-soft:#CFE0F1;
+  --p2:#C4522A; --p2-ink:#7A3116; --p2-soft:#F2D8CC;
+  --ink:#15181C; --muted:#666E78; --faint:#9AA2AC;
+  --panel:#FFFFFF; --page:#F4F5F7; --well:#EDEFF2;
+  --rule:#DDE1E6; --rule-strong:#C3C9D0;
+  --ok:#1F7A4D; --bad:#B3341F; --warn:#8A6100;
+  --r:6px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);
+  font:400 15px/1.55 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 24px 64px}
+h1{font-size:21px;font-weight:600;margin:0 0 4px;letter-spacing:-0.01em}
+.sub{color:var(--muted);font-size:14px;margin:0 0 28px}
+
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:18px 20px}
+.panel + .panel{margin-top:16px}
+.lbl{font-size:12px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;color:var(--faint);margin:0 0 10px}
+
+button{font:500 13px/1 "IBM Plex Sans",sans-serif;color:var(--ink);background:var(--panel);
+  border:1px solid var(--rule-strong);border-radius:var(--r);padding:9px 14px;cursor:pointer}
+button:hover:not(:disabled){background:var(--well)}
+button:disabled{color:var(--faint);cursor:default;border-color:var(--rule)}
+button.solid{background:var(--ink);color:#fff;border-color:var(--ink)}
+button.solid:hover{background:#2B2F35}
+:focus-visible{outline:2px solid var(--p1);outline-offset:2px}
+
+input[type=text],input[type=number],select,textarea{font-family:"IBM Plex Mono",monospace;font-size:13px;
+  color:var(--ink);background:var(--panel);border:1px solid var(--rule-strong);border-radius:var(--r);padding:8px 10px}
+textarea{width:100%;resize:vertical;line-height:1.5}
+
+.drop{border:1.5px dashed var(--rule-strong);border-radius:10px;background:var(--panel);
+  padding:28px 20px;text-align:center;transition:border-color .15s,background .15s}
+.drop.hot{border-color:var(--p1);background:var(--p1-soft)}
+.drop p{margin:0 0 14px;color:var(--muted);font-size:14px}
+
+.stats{display:flex;flex-wrap:wrap;border:1px solid var(--rule);border-radius:10px;background:var(--panel);overflow:hidden}
+.stat{flex:1 1 130px;padding:14px 16px;border-right:1px solid var(--rule)}
+.stat:last-child{border-right:0}
+.stat .n{font-family:"IBM Plex Mono",monospace;font-size:19px;font-weight:500;line-height:1.2}
+.stat .k{font-size:12px;color:var(--muted);margin-top:2px}
+.stat.bad .n{color:var(--bad)}
+.stat.ok .n{color:var(--ok)}
+
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+@media(max-width:780px){.cols{grid-template-columns:minmax(0,1fr)}}
+
+.board{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;background:var(--well);padding:12px;border-radius:8px}
+.cell{aspect-ratio:1;border-radius:50%;border:1px solid var(--rule-strong);background:var(--panel)}
+.cell.p1{background:var(--p1-soft);border-color:var(--p1)}
+.cell.p2{background:var(--p2-soft);border-color:var(--p2)}
+.cell.win{border-width:3px}
+.cell.p1.win{border-color:var(--p1-dark)}
+.cell.p2.win{border-color:var(--p2-ink)}
+.axis{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;padding:6px 12px 0;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);text-align:center}
+
+.nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.nav .idx{width:110px}
+
+.check{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--rule)}
+.check:last-child{border-bottom:0}
+.check .m{flex:none;width:14px;font-family:"IBM Plex Mono",monospace;font-weight:500}
+.check.pass .m{color:var(--ok)} .check.fail .m{color:var(--bad)} .check.info .m{color:var(--faint)}
+.check.info span{color:var(--muted)}
+
+table.xt{border-collapse:collapse;font-family:"IBM Plex Mono",monospace;font-size:13px}
+table.xt th,table.xt td{border:1px solid var(--rule);padding:8px 14px;text-align:right}
+table.xt th{background:var(--well);font-weight:500;color:var(--muted)}
+table.xt td.zero{color:var(--ok)}
+table.xt td.violation{color:var(--bad);background:#FBEDEA;font-weight:500}
+
+.strip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px}
+.thumb{flex:none;cursor:pointer;background:none;border:1px solid var(--rule);border-radius:6px;padding:5px}
+.thumb:hover{border-color:var(--p1)}
+.thumb[aria-current=true]{border-color:var(--ink);border-width:2px;padding:4px}
+.thumb .g{display:grid;grid-template-columns:repeat(7,5px);gap:2px}
+.thumb i{width:5px;height:5px;border-radius:50%;background:var(--rule)}
+.thumb i.p1{background:var(--p1)} .thumb i.p2{background:var(--p2)}
+.thumb .cap{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--faint);margin-top:4px;text-align:center}
+
+.legend{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+.chip{display:inline-flex;align-items:center;gap:5px;margin-right:12px}
+.dot{width:10px;height:10px;border-radius:50%;border:1px solid}
+.dot.a{background:var(--p1-soft);border-color:var(--p1)}
+.dot.b{background:var(--p2-soft);border-color:var(--p2)}
+.hidden{display:none}
+.bar{height:3px;background:var(--well);border-radius:2px;overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;background:var(--p1);width:0}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Connect-4 dataset inspector</h1>
+<p class="sub">Row-major, row 0 = top. Either player may move first; legality is judged accordingly.</p>
+
+<div class="panel" id="loader">
+  <div class="drop" id="drop">
+    <p>Drop your CSV here, or pick a file. Nothing leaves your machine.</p>
+    <input type="file" id="file" accept=".csv,.txt" class="hidden">
+    <button class="solid" id="pick">Choose CSV</button>
+    <button id="demo">Load a sample row instead</button>
+    <div class="bar hidden" id="barwrap"><i id="bar"></i></div>
+  </div>
+  <div style="margin-top:16px">
+    <p class="lbl">Or paste a single row</p>
+    <textarea id="paste" rows="2" placeholder="0,0,0, … ,1"></textarea>
+    <button style="margin-top:8px" id="usepaste">Inspect this row</button>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+
+  <div class="stats" id="stats"></div>
+
+  <div class="panel">
+    <p class="lbl">Piece difference by winner label</p>
+    <div id="xtab"></div>
+    <p class="legend" id="xtnote"></p>
+  </div>
+
+  <div class="panel">
+    <div class="cols">
+      <div>
+        <div class="board" id="board"></div>
+        <div class="axis" id="axis"></div>
+        <p class="legend">
+          <span class="chip"><span class="dot a"></span>player +1</span>
+          <span class="chip"><span class="dot b"></span>player −1</span>
+          <span class="chip">thick ring = winning line</span>
+        </p>
+        <div class="nav">
+          <button id="prev">← Prev</button>
+          <button id="next">Next →</button>
+          <input type="number" class="idx" id="idx" min="0" value="0" aria-label="Row index">
+          <button id="go">Go</button>
+          <select id="filter" aria-label="Filter rows">
+            <option value="all">All rows</option>
+            <option value="any">Any problem</option>
+            <option value="gravity">Gravity failures</option>
+            <option value="parity">Parity failures</option>
+            <option value="winner">Label vs board mismatch</option>
+            <option value="lastmove">Loser moved last</option>
+            <option value="draw">Draws on a non-full board</option>
+            <option value="dup">Duplicate boards</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <p class="lbl">Row checks</p>
+        <div id="checks"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="stripwrap">
+    <p class="lbl" id="striplbl">Nearby rows</p>
+    <div class="strip" id="strip"></div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+(function(){
+
+var N = 0, DATA = null, flags = null;
+var F = {GRAV:1, PAR:2, WIN:4, LAST:8, DRAW:16, DUP:32};
+var order = [], pos = 0, XT = null;
+
+var $ = function(id){ return document.getElementById(id); };
+
+/* ---------- board helpers (row-major, row 0 = top) ---------- */
+
+function at(cells,r,c){ return cells[r*7+c]; }
+
+function winLines(cells){
+  var dirs=[[0,1],[1,0],[1,1],[1,-1]], out=[];
+  for (var r=0;r<6;r++) for (var c=0;c<7;c++){
+    var p=at(cells,r,c); if(!p) continue;
+    for (var k=0;k<4;k++){
+      var dr=dirs[k][0], dc=dirs[k][1], er=r+3*dr, ec=c+3*dc;
+      if (er<0||er>5||ec<0||ec>6) continue;
+      var ok=true, idxs=[];
+      for (var i=0;i<4;i++){
+        var y=r+i*dr, x=c+i*dc;
+        if (at(cells,y,x)!==p){ ok=false; break; }
+        idxs.push(y*7+x);
+      }
+      if (ok) out.push({p:p, cells:idxs});
+    }
+  }
+  return out;
+}
+
+function gravityOk(cells){
+  for (var c=0;c<7;c++) for (var r=0;r<5;r++)
+    if (at(cells,r,c)!==0 && at(cells,r+1,c)===0) return false;
+  return true;
+}
+
+function counts(cells){
+  var a=0,b=0;
+  for (var i=0;i<42;i++){ if(cells[i]===1) a++; else if(cells[i]===-1) b++; }
+  return [a,b];
+}
+
+/* base-3 pack, two halves each < 3^21 — exact in a double, so no collisions */
+function boardKey(cells){
+  var h1=0,h2=0;
+  for (var i=0;i<21;i++) h1 = h1*3 + (cells[i]+1);
+  for (var j=21;j<42;j++) h2 = h2*3 + (cells[j]+1);
+  return h1 + ":" + h2;
+}
+
+/* Either player may open, so total plies parity tells you who did.
+   diff != 0  -> the player with the extra piece both opened and closed.
+   diff == 0  -> even plies: opener is the opposite of whoever moved last. */
+function inferStarter(diff, winner){
+  if (diff !== 0) return diff > 0 ? 1 : -1;
+  if (winner !== 0) return -winner;
+  return 0;                                   // full-board draw: undetermined
+}
+
+/* ---------- parsing ---------- */
+
+function parseText(text, done){
+  var lines = text.split(/\r?\n/);
+  var start = /[a-zA-Z]/.test(lines[0]) ? 1 : 0;
+  var rows = [];
+  for (var i=start;i<lines.length;i++) if (lines[i].trim()) rows.push(lines[i]);
+
+  N = rows.length;
+  DATA = new Int8Array(N*43);
+  var i2 = 0;
+
+  function chunk(){
+    var end = Math.min(i2+20000, N);
+    for (; i2<end; i2++){
+      var parts = rows[i2].split(",");
+      for (var k=0;k<43;k++) DATA[i2*43+k] = parts[k]|0;
+    }
+    $("bar").style.width = Math.round(100*i2/N) + "%";
+    if (i2 < N) requestAnimationFrame(chunk); else done();
+  }
+  $("barwrap").classList.remove("hidden");
+  chunk();
+}
+
+/* ---------- full-file audit ---------- */
+
+function audit(){
+  flags = new Uint8Array(N);
+  var seen = new Set(), cells = new Int8Array(42);
+  var t = {grav:0,par:0,win:0,last:0,draw:0,dup:0,w1:0,wm:0,w0:0,s1:0,sm:0,s0:0};
+  XT = {};
+  [-2,-1,0,1,2].forEach(function(d){ XT[d] = {"-1":0,"0":0,"1":0}; });
+
+  for (var i=0;i<N;i++){
+    var base = i*43;
+    for (var k=0;k<42;k++) cells[k] = DATA[base+k];
+    var winner = DATA[base+42], f = 0;
+
+    if (!gravityOk(cells)) { f |= F.GRAV; t.grav++; }
+
+    var ab = counts(cells), a = ab[0], b = ab[1], diff = a - b, total = a + b;
+
+    /* legal whenever one player is at most one piece ahead — either may open */
+    if (Math.abs(diff) > 1) { f |= F.PAR; t.par++; }
+
+    var ws = winLines(cells), sides = {};
+    ws.forEach(function(w){ sides[w.p] = 1; });
+    var nside = Object.keys(sides).length;
+    var detected = nside === 1 ? ws[0].p : 0;
+    if (nside > 1 || detected !== winner) { f |= F.WIN; t.win++; }
+
+    /* the only impossible final-mover case: the LOSER holds the extra piece */
+    if (winner !== 0 && diff !== 0 && Math.sign(diff) !== winner) { f |= F.LAST; t.last++; }
+
+    /* a draw must mean the board filled up */
+    if (winner === 0 && total !== 42) { f |= F.DRAW; t.draw++; }
+
+    var key = boardKey(cells);
+    if (seen.has(key)) { f |= F.DUP; t.dup++; } else seen.add(key);
+
+    var dk = Math.max(-2, Math.min(2, diff));
+    XT[dk][String(winner)]++;
+
+    if (winner === 1) t.w1++; else if (winner === -1) t.wm++; else t.w0++;
+    var st = inferStarter(diff, winner);
+    if (st === 1) t.s1++; else if (st === -1) t.sm++; else t.s0++;
+
+    flags[i] = f;
+  }
+  return t;
+}
+
+function renderStats(t){
+  var dirty = 0;
+  for (var i=0;i<N;i++) if (flags[i]) dirty++;
+  var clean = N - dirty;
+  var cell = function(cls,n,k){
+    return '<div class="stat '+cls+'"><div class="n">'+n+'</div><div class="k">'+k+'</div></div>';
+  };
+  $("stats").innerHTML =
+    cell("", N.toLocaleString(), "rows loaded") +
+    cell(clean===N?"ok":"", clean.toLocaleString(), "clean (" + (100*clean/N).toFixed(2) + "%)") +
+    cell(t.grav?"bad":"ok", t.grav.toLocaleString(), "gravity failures") +
+    cell(t.par?"bad":"ok", t.par.toLocaleString(), "parity failures") +
+    cell(t.win?"bad":"ok", t.win.toLocaleString(), "label mismatches") +
+    cell(t.last?"bad":"ok", t.last.toLocaleString(), "loser moved last") +
+    cell(t.draw?"bad":"ok", t.draw.toLocaleString(), "bad draws") +
+    cell(t.dup?"bad":"ok", t.dup.toLocaleString(), "duplicates") +
+    cell("", t.w1.toLocaleString()+" / "+t.wm.toLocaleString()+" / "+t.w0.toLocaleString(), "wins +1 / −1 / draw") +
+    cell("", t.s1.toLocaleString()+" / "+t.sm.toLocaleString()+" / "+t.s0.toLocaleString(), "opened by +1 / −1 / n-a");
+}
+
+/* the two cells that must be empty: the loser holding the extra piece */
+function renderXtab(){
+  var rows = [-2,-1,0,1,2], cols = ["-1","0","1"];
+  var h = '<table class="xt"><tr><th>diff</th>';
+  cols.forEach(function(c){ h += '<th>winner ' + (c==="-1"?"−1":c) + '</th>'; });
+  h += "</tr>";
+  var bad = 0;
+  rows.forEach(function(d){
+    var any = cols.some(function(c){ return XT[d][c] > 0; });
+    if (!any && (d===2||d===-2)) return;
+    h += '<tr><th>' + (d>0?"+":"") + (d===2?"≥+2":d===-2?"≤−2":d) + '</th>';
+    cols.forEach(function(c){
+      var v = XT[d][c];
+      var impossible = (d===1 && c==="-1") || (d===-1 && c==="1") || (Math.abs(d)===2);
+      var cls = impossible ? (v>0 ? "violation" : "zero") : "";
+      if (impossible && v>0) bad += v;
+      h += '<td class="'+cls+'">' + v.toLocaleString() + '</td>';
+    });
+    h += "</tr>";
+  });
+  $("xtab").innerHTML = h + "</table>";
+  $("xtnote").textContent = bad === 0
+    ? "Shaded cells are the impossible combinations — all empty, so every row is a legal terminal position."
+    : bad.toLocaleString() + " rows sit in impossible cells. These are the ones to drop.";
+}
+
+/* ---------- single-row rendering ---------- */
+
+function renderRow(i){
+  var base = i*43, cells = new Int8Array(42);
+  for (var k=0;k<42;k++) cells[k] = DATA[base+k];
+  var winner = DATA[base+42];
+
+  var ws = winLines(cells), hi = {};
+  ws.forEach(function(w){ w.cells.forEach(function(x){ hi[x]=1; }); });
+
+  var h = "";
+  for (var j=0;j<42;j++){
+    var p = cells[j];
+    h += '<div class="cell' + (p===1?" p1":p===-1?" p2":"") + (hi[j]?" win":"") + '"></div>';
+  }
+  $("board").innerHTML = h;
+  $("axis").innerHTML = "0123456".split("").map(function(d){ return "<span>"+d+"</span>"; }).join("");
+  $("idx").value = i;
+
+  var ab = counts(cells), a=ab[0], b=ab[1], diff=a-b, total=a+b;
+  var sides={}; ws.forEach(function(w){ sides[w.p]=1; });
+  var nside = Object.keys(sides).length;
+  var detected = nside===1 ? ws[0].p : 0;
+  var starter = inferStarter(diff, winner);
+  var f = flags[i];
+
+  var nm = function(p){ return p===1 ? "+1" : p===-1 ? "−1" : "either"; };
+  var line = function(state, txt){
+    var m = state==="pass" ? "✓" : state==="fail" ? "✕" : "·";
+    return '<div class="check '+state+'"><span class="m">'+m+'</span><span>'+txt+'</span></div>';
+  };
+
+  var out = "";
+  out += line(f&F.GRAV ? "fail" : "pass", f&F.GRAV ? "Gravity violated — floating discs." : "Gravity holds.");
+  out += line(f&F.PAR ? "fail" : "pass", "Counts " + a + " vs " + b + " (diff " + (diff>0?"+":"") + diff + ")");
+  out += line(nside>1 ? "fail" : "pass", nside>1
+      ? "Both players have a line — impossible."
+      : (ws.length ? ws.length + " line" + (ws.length>1?"s":"") + " for " + nm(ws[0].p) : "No winning line."));
+  out += line(detected===winner ? "pass" : "fail", "Label " + nm(winner) + ", board shows " + nm(detected));
+  if (winner !== 0)
+    out += line(f&F.LAST ? "fail" : "pass", f&F.LAST
+      ? "Loser holds the extra piece — impossible."
+      : "Winner's piece count is consistent.");
+  if (winner === 0)
+    out += line(f&F.DRAW ? "fail" : "pass", f&F.DRAW
+      ? "Draw on a board with only " + total + " pieces."
+      : "Draw on a full board.");
+  out += line("info", "Opened by " + nm(starter) + (starter===0 ? " (undetermined)" : ""));
+  out += line("info", (f&F.DUP) ? "Duplicate of an earlier board." : "First occurrence.");
+  out += line("info", total + " of 42 cells filled.");
+  $("checks").innerHTML = out;
+
+  renderStrip(i);
+}
+
+function renderStrip(current){
+  var show = order.slice(Math.max(0,pos-3), Math.max(0,pos-3)+24);
+  var h = "";
+  show.forEach(function(ri){
+    var g = "";
+    for (var k=0;k<42;k++){
+      var v = DATA[ri*43+k];
+      g += '<i class="'+(v===1?"p1":v===-1?"p2":"")+'"></i>';
+    }
+    h += '<button class="thumb" data-row="'+ri+'" aria-current="'+(ri===current)+'">'
+       + '<div class="g">'+g+'</div><div class="cap">'+ri+'</div></button>';
+  });
+  $("strip").innerHTML = h;
+  $("striplbl").textContent = order.length === N
+    ? "Nearby rows" : order.length + " matching row" + (order.length===1?"":"s");
+}
+
+/* ---------- filtering & navigation ---------- */
+
+function buildOrder(kind){
+  order = [];
+  var mask = {gravity:F.GRAV, parity:F.PAR, winner:F.WIN, lastmove:F.LAST,
+              draw:F.DRAW, dup:F.DUP, any:255}[kind];
+  for (var i=0;i<N;i++) if (!mask || (flags[i] & mask)) order.push(i);
+  if (!order.length) order = [0];
+  pos = 0;
+  show();
+}
+
+function show(){
+  pos = Math.max(0, Math.min(order.length-1, pos));
+  $("prev").disabled = pos === 0;
+  $("next").disabled = pos === order.length-1;
+  renderRow(order[pos]);
+}
+
+/* ---------- wiring ---------- */
+
+function boot(){
+  renderStats(audit());
+  renderXtab();
+  $("loader").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("idx").max = N-1;
+  buildOrder("all");
+}
+
+$("pick").onclick = function(){ $("file").click(); };
+$("file").onchange = function(e){
+  var f = e.target.files[0]; if (!f) return;
+  f.text().then(function(txt){ parseText(txt, boot); });
+};
+
+var drop = $("drop");
+["dragenter","dragover"].forEach(function(ev){
+  drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("hot"); });
+});
+["dragleave","drop"].forEach(function(ev){
+  drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove("hot"); });
+});
+drop.addEventListener("drop", function(e){
+  var f = e.dataTransfer.files[0]; if (!f) return;
+  f.text().then(function(txt){ parseText(txt, boot); });
+});
+
+function loadSingle(vals){
+  if (vals.length < 42) { alert("Need at least 42 values, got " + vals.length); return; }
+  N = 1; DATA = new Int8Array(43);
+  for (var k=0;k<43;k++) DATA[k] = vals[k]|0;
+  boot();
+}
+$("usepaste").onclick = function(){
+  loadSingle($("paste").value.split(/[,\s]+/).filter(function(s){return s.length;}).map(Number));
+};
+$("demo").onclick = function(){
+  var d = new Array(43).fill(0);
+  [28,29,30].forEach(function(i){ d[i] = -1; });
+  [35,36,37,38].forEach(function(i){ d[i] = 1; });
+  d[42] = 1;
+  $("paste").value = d.join(",");
+  loadSingle(d);
+};
+
+$("prev").onclick = function(){ pos--; show(); };
+$("next").onclick = function(){ pos++; show(); };
+$("go").onclick = function(){
+  var i = parseInt($("idx").value, 10);
+  if (isNaN(i) || i<0 || i>=N) return;
+  if ($("filter").value !== "all") { $("filter").value = "all"; buildOrder("all"); }
+  pos = i; show();
+};
+$("filter").onchange = function(){ buildOrder(this.value); };
+$("strip").onclick = function(e){
+  var b = e.target.closest(".thumb"); if (!b) return;
+  var k = order.indexOf(parseInt(b.dataset.row, 10));
+  if (k >= 0) { pos = k; show(); }
+};
+document.addEventListener("keydown", function(e){
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  if (e.key === "ArrowLeft") { pos--; show(); }
+  if (e.key === "ArrowRight") { pos++; show(); }
+});
+
+})();
+</script>
+</body>
+</html>
